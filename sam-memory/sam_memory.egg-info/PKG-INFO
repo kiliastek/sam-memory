@@ -1,0 +1,215 @@
+Metadata-Version: 2.4
+Name: sam-memory
+Version: 0.1.0
+Summary: Persistent, layered memory for AI sales agents. Sales-native port of the agentmemory 4-tier model.
+Author: SAM contributors
+License: MIT License
+        
+        Copyright (c) 2026 SAM contributors
+        
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+        
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+        
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+        
+Project-URL: Homepage, https://github.com/your-org/sam-memory
+Project-URL: Issues, https://github.com/your-org/sam-memory/issues
+Project-URL: Changelog, https://github.com/your-org/sam-memory/blob/main/CHANGELOG.md
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Office/Business
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pydantic<3,>=2.6
+Requires-Dist: typer>=0.12
+Requires-Dist: rich>=13
+Requires-Dist: pyyaml>=6
+Requires-Dist: python-dateutil>=2.9
+Requires-Dist: eval-type-backport>=0.2; python_version < "3.10"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-cov>=5; extra == "dev"
+Requires-Dist: ruff>=0.6; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"
+Dynamic: license-file
+
+# SAM — Sales Agent Memory
+
+**Persistent, layered memory for AI sales agents.** Stop re-explaining your accounts. Stop re-discovering the same stakeholder relationships. Stop losing context between sessions.
+
+SAM is a structured, file-first memory system shaped specifically for sales workflows — accounts, stakeholders, outreach threads, MEDDPICC qualification states, commercial signals, partner routes. It's inspired by [agentmemory](https://github.com/rohitg00/agentmemory) (which is built for coding agents) and ports the 4-tier consolidation model into a sales-native vocabulary.
+
+> **Status:** v0.1.0 — MVP. Schemas + SQLite storage + 4-tier markdown memory + CLI. See [Roadmap](#roadmap) for what's next.
+
+---
+
+## Why
+
+Sales agents (human or AI) work with state that changes daily:
+- New stakeholder identified
+- LinkedIn connection accepted / bounced / withdrawn
+- Meeting outcome captured
+- MEDDPICC element confirmed
+- Partner warm-route opened
+- Commercial signal published (earnings, leadership move, M&A)
+
+Without persistent memory:
+- Every conversation re-explains the territory
+- Stakeholder relationships drift
+- Outreach cadence collapses
+- MEDDPICC gaps stay invisible
+
+SAM keeps that state on disk in a human-readable, AI-loadable shape. Markdown for humans; SQLite for fast indexed retrieval; pydantic for schema validation.
+
+## What you get
+
+- **Sales-native entities** — `Account`, `Stakeholder`, `OutreachThread`, `Touch`, `Meeting`, `Signal`, `Hypothesis`, `Qualification` (MEDDPICC), `WarmRoute`. Vocabulary an AE actually uses.
+- **4-tier memory** — L0 raw / L1 atoms / L2 scenes / L3 persona. Same shape as agentmemory's working/episodic/semantic/procedural model, ported to sales.
+- **File-first storage** — markdown files are the source of truth; SQLite is an index. Diff in git, edit in your IDE, read on a phone.
+- **CLI** — `sam init`, `sam account add`, `sam touch log`, `sam scene <slug>`, `sam search`, `sam persona`.
+- **Pydantic schemas** — every entity validates. Easy to plug into MCP servers, FastAPI endpoints, or other agents.
+- **MIT licensed** — fork it, ship it, sell it.
+
+## Architecture (one diagram)
+
+```
+                  ┌─────────────────────────────────────────┐
+                  │  L3 Persona (who is the AE?)            │
+                  │  role · pod · methodology · territory   │
+                  └─────────────────────────────────────────┘
+                                       │
+                  ┌─────────────────────────────────────────┐
+                  │  L2 Scenes (one per account, narrative) │
+                  │  stakeholder · context · motion · entry │
+                  │  · last touch · blocker · next action   │
+                  └─────────────────────────────────────────┘
+                                       │
+                  ┌─────────────────────────────────────────┐
+                  │  L1 Atoms (dated facts, append-only)    │
+                  │  [YYYY-MM-DD] concise fact, max 20 words│
+                  └─────────────────────────────────────────┘
+                                       │
+                  ┌─────────────────────────────────────────┐
+                  │  L0 Raw (transcripts, drafts, exports)  │
+                  │  unprocessed source material            │
+                  └─────────────────────────────────────────┘
+
+  Indexed by SQLite (sam.db) │ Backed by pydantic │ Surfaced via CLI
+```
+
+## Quick start
+
+```bash
+git clone https://github.com/<you>/sam-memory.git
+cd sam-memory
+pip install -e .
+
+# Initialise a memory store in the current directory
+sam init
+
+# Add an account
+sam account add --slug acme-corp --name "Acme Corp" --tier 1 --vertical "Telco"
+
+# Add a stakeholder
+sam stakeholder add --account acme-corp --name "Jane Smith" --title "CTO" --meddpicc Champion
+
+# Log an outreach touch
+sam touch log --account acme-corp --stakeholder "Jane Smith" \
+  --channel linkedin --direction outbound \
+  --message "Hi Jane, saw your interview on Q3 platform strategy..."
+
+# Read the scene for an account
+sam scene acme-corp
+
+# Search across all accounts
+sam search "platform consolidation"
+
+# Show persona
+sam persona
+```
+
+## Repository layout
+
+```
+sam-memory/
+├── README.md                   you are here
+├── LICENSE                     MIT
+├── CHANGELOG.md
+├── pyproject.toml
+├── docs/
+│   ├── architecture.md         the 4-tier model, the entity graph, write-paths
+│   ├── schemas.md              every pydantic model documented
+│   └── quickstart.md           a 10-minute tour
+├── sam/                        the package
+│   ├── models/                 pydantic schemas (Account, Stakeholder, ...)
+│   ├── storage/                SQLite repository pattern
+│   ├── memory/                 4-tier markdown layer (read/write/templates)
+│   └── cli.py                  typer entry point
+├── examples/                   fictional Acme Corp dataset to play with
+│   ├── persona/
+│   ├── scenes/
+│   └── atoms/
+└── tests/                      pytest smoke tests
+```
+
+## Where SAM differs from agentmemory
+
+| Dimension | agentmemory | SAM |
+|---|---|---|
+| Domain | Coding agents | Sales agents |
+| Capture hooks | `PreToolUse`, `PostToolUse`, `SessionStart` | `OnEmailSent`, `OnReplyReceived`, `OnMeetingScheduled`, `OnSignalDetected` (v0.2+) |
+| Entities | Sessions, Observations, Memories | Account, Stakeholder, OutreachThread, Touch, Meeting, Signal, Hypothesis, Qualification, WarmRoute |
+| Tier 4 vocabulary | working/episodic/semantic/procedural | L0 raw / L1 atoms / L2 scenes / L3 persona |
+| Retrieval | BM25 + vector + knowledge graph (RRF) | SQLite + markdown grep (v0.1); vector + RRF (v0.2+) |
+| Stack | TypeScript / iii-engine / SQLite | Python / pydantic / SQLite |
+
+The shape is the same. The vocabulary, schemas, and capture moments are sales-native rather than dev-native.
+
+## Roadmap
+
+**v0.1.0 (this release)** — Schemas, SQLite storage, 4-tier markdown layer, CLI, examples, docs.
+
+**v0.2.0** — Vector embeddings (sentence-transformers, local) + BM25 + RRF fusion. Replaces the v0.1 markdown grep with hybrid semantic search.
+
+**v0.3.0** — MCP server. 7+ core tools (`sam_account_get`, `sam_stakeholder_search`, `sam_touch_log`, `sam_scene_read`, `sam_persona_get`, `sam_qualify_update`, `sam_signal_record`). Drop-in for Claude Code, Cursor, etc.
+
+**v0.4.0** — Capture hooks. `OnEmailSent` (Outlook/Gmail integration), `OnReplyReceived`, `OnMeetingScheduled` (calendar integration), `OnSignalDetected` (news/press scraping). Auto-populate L1 atoms from real-world events.
+
+**v0.5.0** — LLM compression. Optional summarisation pass: raw L0 transcript → L1 atomic facts → L2 scene narrative. Pluggable provider (Anthropic / OpenAI / local).
+
+**v1.0.0** — Knowledge graph. Stakeholder → Account → Partner → Competitor traversal. Surfaces second-order relationships ("who at Acme is connected to anyone in our portfolio?").
+
+## Credits
+
+SAM is **inspired by** [agentmemory](https://github.com/rohitg00/agentmemory) by Rohit Gangupantulu. The 4-tier consolidation model and the file-indexed storage philosophy are direct ports. The schemas, vocabulary, hooks, and CLI shape are SAM's own.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, fork it, sell it, just keep the notice.
+
+## Contributing
+
+This is v0. Issues and PRs welcome — especially around: capture hooks for specific email/calendar providers, MCP server tool definitions, alternative MEDDPICC variants (MEDDIC, BANT), and example data sets for verticals beyond TMT.
+
+Keep proprietary customer / pipeline data out of contributed examples. Use fictional companies (Acme, Globex, Initech) and made-up people.
